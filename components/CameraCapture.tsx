@@ -4,7 +4,6 @@ import { useRef, useCallback, useState } from 'react';
 import Link from 'next/link';
 import Webcam from 'react-webcam';
 import {
-  Camera,
   UploadSimple,
   X,
   CheckCircle,
@@ -14,6 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import CrawlingSoldier from '@/components/CrawlingSoldier';
+import ScopeIcon from '@/components/ScopeIcon';
+import BulletHole from '@/components/BulletHole';
 import { FACILITIES } from '@/lib/facilities';
 
 // 追加したメディア1件分（写真 or 動画）
@@ -35,6 +36,7 @@ export default function CameraCapture() {
 
   const [media, setMedia] = useState<Media[]>([]);
   const [cameraOn, setCameraOn] = useState(false);
+  const [firing, setFiring] = useState(false); // 撮影の被弾エフェクト中
   const [spotName, setSpotName] = useState('');
   const [rating, setRating] = useState(0);
   const [facilities, setFacilities] = useState<string[]>([]);
@@ -61,11 +63,18 @@ export default function CameraCapture() {
   };
 
   // カメラで写真を1枚撮影して追加
-  const capture = async () => {
+  // 撮影ボタンで照準を中心に止め、被弾エフェクト（銃痕）を見せてから写真を確定する
+  const capture = () => {
+    if (firing) return;
     const imageSrc = webcamRef.current?.getScreenshot();
     if (!imageSrc) return;
-    const blob = await (await fetch(imageSrc)).blob();
-    addMedia({ url: URL.createObjectURL(blob), kind: 'image', blob });
+
+    setFiring(true);
+    window.setTimeout(async () => {
+      const blob = await (await fetch(imageSrc)).blob();
+      addMedia({ url: URL.createObjectURL(blob), kind: 'image', blob });
+      setFiring(false);
+    }, 650);
   };
 
   // 端末のファイル（写真・動画）を複数追加
@@ -232,20 +241,49 @@ export default function CameraCapture() {
         {/* カメラプレビュー（起動時のみ表示） */}
         {cameraOn && (
           <div className="flex flex-col items-center gap-4 rounded-lg border border-gray-200 p-3">
-            <Webcam
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              className="w-full rounded-md"
-            />
+            {/* カメラ映像＋狙撃スコープ風の照準オーバーレイ */}
+            <div className="relative w-full overflow-hidden rounded-md">
+              <Webcam
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                className="w-full"
+              />
+              {/* 照準（狙う間は上下横斜めに揺れ、撮影すると中心で停止） */}
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className={`${firing ? '' : 'scope-aim'} relative flex items-center justify-center`}>
+                  <ScopeIcon
+                    size={130}
+                    className="text-white/85 drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+                  />
+                  {/* 中心の赤いターゲットドット */}
+                  <span className="absolute h-2 w-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.9)]" />
+                </div>
+              </div>
+
+              {/* 被弾エフェクト（撮影した瞬間、中心に銃痕） */}
+              {firing && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <BulletHole
+                    size={220}
+                    className="impact-pop text-white/90 drop-shadow-[0_0_3px_rgba(0,0,0,0.9)]"
+                  />
+                </div>
+              )}
+              {/* 四隅のフレーム（ファインダー枠） */}
+              <span className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l-2 border-t-2 border-white/70" />
+              <span className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r-2 border-t-2 border-white/70" />
+              <span className="pointer-events-none absolute bottom-2 left-2 h-5 w-5 border-b-2 border-l-2 border-white/70" />
+              <span className="pointer-events-none absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-white/70" />
+            </div>
             {/* 大きなシャッター（撮影）ボタン */}
             <button
               type="button"
               onClick={capture}
-              disabled={disabled || media.length >= MAX_MEDIA}
+              disabled={disabled || firing || media.length >= MAX_MEDIA}
               aria-label="写真を撮る"
               className="flex h-20 w-20 items-center justify-center rounded-full bg-camo text-white shadow-lg ring-4 ring-camo/30 transition-transform hover:bg-camo-dark active:scale-95 disabled:opacity-50"
             >
-              <Camera size={40} weight="fill" />
+              <ScopeIcon size={40} />
             </button>
             <Button variant="outline" onClick={() => setCameraOn(false)} className="w-full">
               カメラを閉じる
@@ -262,7 +300,7 @@ export default function CameraCapture() {
             disabled={disabled || media.length >= MAX_MEDIA}
             className="flex-1 gap-2"
           >
-            <Camera size={18} />
+            <ScopeIcon size={18} />
             カメラ
           </Button>
           <Button
