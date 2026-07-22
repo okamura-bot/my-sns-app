@@ -9,25 +9,31 @@ import {
   X,
   CheckCircle,
   Star,
+  Play,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import CrawlingSoldier from '@/components/CrawlingSoldier';
 import { FACILITIES } from '@/lib/facilities';
 
-// 追加した写真1枚分（データURLで保持）
-type Photo = { id: string; src: string };
+// 追加したメディア1件分（写真 or 動画）
+type Media = {
+  id: string;
+  url: string; // プレビュー用URL
+  kind: 'image' | 'video';
+  blob: Blob; // アップロードする実データ
+};
 
-const MAX_PHOTOS = 8;
+const MAX_MEDIA = 8;
 
 // 報告フォーム
-// 写真（カメラ撮影 or 端末からアップロード・複数可）/ スポット名(必須) / 評価 / 設備 を投稿する
+// 写真・動画（カメラ撮影 or 端末からアップロード・複数可）/ スポット名(必須) / 評価 / 設備 を投稿する
 export default function CameraCapture() {
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoSeq = useRef(0);
+  const mediaSeq = useRef(0);
 
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [media, setMedia] = useState<Media[]>([]);
   const [cameraOn, setCameraOn] = useState(false);
   const [spotName, setSpotName] = useState('');
   const [rating, setRating] = useState(0);
@@ -38,35 +44,37 @@ export default function CameraCapture() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addPhoto = useCallback((src: string) => {
-    setPhotos((prev) => {
-      if (prev.length >= MAX_PHOTOS) return prev;
-      photoSeq.current += 1;
-      return [...prev, { id: `${Date.now()}-${photoSeq.current}`, src }];
+  const addMedia = useCallback((item: Omit<Media, 'id'>) => {
+    setMedia((prev) => {
+      if (prev.length >= MAX_MEDIA) return prev;
+      mediaSeq.current += 1;
+      return [...prev, { ...item, id: `${Date.now()}-${mediaSeq.current}` }];
     });
   }, []);
 
-  const removePhoto = (id: string) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  const removeMedia = (id: string) => {
+    setMedia((prev) => {
+      const target = prev.find((m) => m.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((m) => m.id !== id);
+    });
   };
 
-  // カメラで1枚撮影して追加
-  const capture = () => {
+  // カメラで写真を1枚撮影して追加
+  const capture = async () => {
     const imageSrc = webcamRef.current?.getScreenshot();
-    if (imageSrc) addPhoto(imageSrc);
+    if (!imageSrc) return;
+    const blob = await (await fetch(imageSrc)).blob();
+    addMedia({ url: URL.createObjectURL(blob), kind: 'image', blob });
   };
 
-  // 端末のファイルを複数読み込んで追加
+  // 端末のファイル（写真・動画）を複数追加
   const onFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') addPhoto(reader.result);
-      };
-      reader.readAsDataURL(file);
+      const kind: Media['kind'] = file.type.startsWith('video') ? 'video' : 'image';
+      addMedia({ url: URL.createObjectURL(file), kind, blob: file });
     });
-    // 同じファイルを続けて選べるように input をリセット
     e.target.value = '';
   };
 
@@ -77,9 +85,8 @@ export default function CameraCapture() {
   };
 
   const submit = async () => {
-    // バリデーション
-    if (photos.length === 0) {
-      setError('写真を1枚以上追加してください。');
+    if (media.length === 0) {
+      setError('写真または動画を1つ以上追加してください。');
       return;
     }
     if (!spotName.trim()) {
@@ -101,16 +108,20 @@ export default function CameraCapture() {
         return;
       }
 
-      // すべての写真を Storage にアップロードして公開URLを集める
+      // すべてのメディアを Storage にアップロードして公開URLを集める
       const urls: string[] = [];
-      for (let i = 0; i < photos.length; i++) {
-        const blob = await (await fetch(photos[i].src)).blob();
-        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+      for (let i = 0; i < media.length; i++) {
+        const blob = media[i].blob;
+        const rawExt = (blob.type.split('/')[1] || 'bin').toLowerCase();
+        const ext = rawExt
+          .replace('jpeg', 'jpg')
+          .replace('quicktime', 'mov')
+          .replace('x-matroska', 'mkv');
         const fileName = `${user.id}/${Date.now()}-${i}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(fileName, blob, { contentType: blob.type || 'image/jpeg' });
+          .upload(fileName, blob, { contentType: blob.type || 'application/octet-stream' });
 
         if (uploadError) {
           console.error('Storage upload error:', uploadError);
@@ -124,7 +135,6 @@ export default function CameraCapture() {
         urls.push(publicUrl);
       }
 
-      // posts テーブルへ保存
       const { error: insertError } = await supabase.from('posts').insert({
         image_url: urls[0],
         image_urls: urls,
@@ -172,29 +182,45 @@ export default function CameraCapture() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* --- 写真 --- */}
+      {/* --- 写真・動画 --- */}
       <section className="flex flex-col gap-3">
         <label className="text-sm font-semibold text-gray-800">
-          写真 <span className="text-xs font-normal text-gray-500">（複数可）</span>
+          写真・動画 <span className="text-xs font-normal text-gray-500">（複数可）</span>
         </label>
 
         {/* サムネイル一覧 */}
-        {photos.length > 0 && (
+        {media.length > 0 && (
           <div className="grid grid-cols-3 gap-2">
-            {photos.map((p) => (
-              <div key={p.id} className="relative aspect-square">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={p.src}
-                  alt="追加した写真"
-                  className="h-full w-full rounded-md object-cover"
-                />
+            {media.map((m) => (
+              <div key={m.id} className="relative aspect-square">
+                {m.kind === 'video' ? (
+                  <>
+                    <video
+                      src={m.url}
+                      className="h-full w-full rounded-md object-cover"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                    {/* 動画であることを示すアイコン */}
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <Play size={28} weight="fill" className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                    </span>
+                  </>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={m.url}
+                    alt="追加したメディア"
+                    className="h-full w-full rounded-md object-cover"
+                  />
+                )}
                 <button
                   type="button"
-                  onClick={() => removePhoto(p.id)}
+                  onClick={() => removeMedia(m.id)}
                   disabled={disabled}
                   className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/80 text-white hover:bg-gray-900"
-                  aria-label="写真を削除"
+                  aria-label="削除"
                 >
                   <X size={14} weight="bold" />
                 </button>
@@ -205,21 +231,25 @@ export default function CameraCapture() {
 
         {/* カメラプレビュー（起動時のみ表示） */}
         {cameraOn && (
-          <div className="flex flex-col items-center gap-3 rounded-lg border border-gray-200 p-3">
+          <div className="flex flex-col items-center gap-4 rounded-lg border border-gray-200 p-3">
             <Webcam
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               className="w-full rounded-md"
             />
-            <div className="flex w-full gap-2">
-              <Button onClick={capture} disabled={disabled || photos.length >= MAX_PHOTOS} className="flex-1 gap-2">
-                <Camera size={18} />
-                撮影
-              </Button>
-              <Button variant="outline" onClick={() => setCameraOn(false)} className="flex-1">
-                閉じる
-              </Button>
-            </div>
+            {/* 大きなシャッター（撮影）ボタン */}
+            <button
+              type="button"
+              onClick={capture}
+              disabled={disabled || media.length >= MAX_MEDIA}
+              aria-label="写真を撮る"
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-camo text-white shadow-lg ring-4 ring-camo/30 transition-transform hover:bg-camo-dark active:scale-95 disabled:opacity-50"
+            >
+              <Camera size={40} weight="fill" />
+            </button>
+            <Button variant="outline" onClick={() => setCameraOn(false)} className="w-full">
+              カメラを閉じる
+            </Button>
           </div>
         )}
 
@@ -229,7 +259,7 @@ export default function CameraCapture() {
             type="button"
             variant="outline"
             onClick={() => setCameraOn((v) => !v)}
-            disabled={disabled || photos.length >= MAX_PHOTOS}
+            disabled={disabled || media.length >= MAX_MEDIA}
             className="flex-1 gap-2"
           >
             <Camera size={18} />
@@ -239,7 +269,7 @@ export default function CameraCapture() {
             type="button"
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || photos.length >= MAX_PHOTOS}
+            disabled={disabled || media.length >= MAX_MEDIA}
             className="flex-1 gap-2"
           >
             <UploadSimple size={18} />
@@ -248,14 +278,14 @@ export default function CameraCapture() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             onChange={onFilesSelected}
             className="hidden"
           />
         </div>
-        {photos.length >= MAX_PHOTOS && (
-          <p className="text-xs text-gray-500">写真は最大 {MAX_PHOTOS} 枚までです。</p>
+        {media.length >= MAX_MEDIA && (
+          <p className="text-xs text-gray-500">追加できるのは最大 {MAX_MEDIA} 件までです。</p>
         )}
       </section>
 

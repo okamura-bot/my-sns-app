@@ -18,6 +18,11 @@ type Post = {
   created_at: string;
 };
 
+// URLが動画かどうかを拡張子で判定する
+function isVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg|mov|m4v|mkv)(\?|$)/i.test(url);
+}
+
 // 投稿日時を「2026/7/22 15:30」形式にする
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString('ja-JP', {
@@ -111,19 +116,38 @@ export default async function Home() {
                   key={post.id}
                   className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
                 >
-                  {/* 写真（複数はスワイプ横スクロール） */}
+                  {/* 写真・動画（複数はスワイプ横スクロール） */}
                   {images.length > 1 ? (
                     <div className="flex snap-x snap-mandatory overflow-x-auto">
-                      {images.map((url, i) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={i}
-                          src={url}
-                          alt={post.spot_name ?? '報告写真'}
-                          className="aspect-square w-full shrink-0 snap-center object-cover"
-                        />
-                      ))}
+                      {images.map((url, i) =>
+                        isVideoUrl(url) ? (
+                          <video
+                            key={i}
+                            src={url}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="aspect-square w-full shrink-0 snap-center bg-black object-contain"
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={i}
+                            src={url}
+                            alt={post.spot_name ?? '報告写真'}
+                            className="aspect-square w-full shrink-0 snap-center object-cover"
+                          />
+                        ),
+                      )}
                     </div>
+                  ) : isVideoUrl(images[0]) ? (
+                    <video
+                      src={images[0]}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="aspect-square w-full bg-black object-contain"
+                    />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
