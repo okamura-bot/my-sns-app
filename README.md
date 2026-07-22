@@ -100,3 +100,6 @@ lib/
 今の状態で動くもの: カメラプレビュー / ログイン UI（認証フォーム表示）  
 受講者が AI に依頼して追加するもの: 写真アップロード・posts テーブル・タイムライン表示・フォロー機能・Realtime
 2026/7/2
+2026/07/02
+git config --global user.email "okamura@fukurico.co.jp"
+git config --global user.name "okamu"

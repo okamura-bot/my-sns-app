@@ -10,8 +10,8 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 69 44% 23%;
+    --primary-foreground: 60 30% 96%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
@@ -22,8 +22,78 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 69 44% 23%;
     --radius: 0.5rem;
+  }
+
+  /* 迷彩（カモフラージュ）パターン — アメーバ状のパッチ模様。ヘッダーなどの背景に使用 */
+  .camo-bg {
+    background-color: #4b5320;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%234b5320'/%3E%3Cpath fill='%233a4019' d='M-20,70 C20,40 70,55 95,40 C125,22 140,70 115,100 C92,128 45,112 30,140 C15,165 -15,140 -25,105 Z'/%3E%3Cpath fill='%233a4019' d='M210,-15 C255,-5 285,40 262,72 C242,100 275,130 250,165 C300,200 265,235 235,255 C205,275 175,245 190,215 C205,185 168,170 188,138 C205,110 172,78 195,48 C210,28 190,5 210,-15 Z'/%3E%3Cpath fill='%236b7a3a' d='M120,118 C152,102 188,128 176,162 C165,195 120,196 104,168 C92,146 98,130 120,118 Z'/%3E%3Cpath fill='%236b7a3a' d='M38,182 C72,166 100,198 82,230 C66,262 22,256 12,224 C4,200 12,192 38,182 Z'/%3E%3Cpath fill='%236b7a3a' d='M58,-5 C92,-16 116,12 104,40 C92,68 52,62 44,34 C39,15 44,2 58,-5 Z'/%3E%3Cpath fill='%238a9a5b' d='M168,36 C196,26 214,54 197,78 C180,100 146,84 152,58 C156,44 158,42 168,36 Z'/%3E%3Cpath fill='%238a9a5b' d='M6,256 C34,244 58,270 42,292 C27,314 -8,302 -2,274 Z'/%3E%3Cpath fill='%238a9a5b' d='M236,116 C264,106 286,134 268,160 C251,184 216,168 222,140 Z'/%3E%3Cpath fill='%232f3123' d='M98,76 C112,68 124,82 115,96 C105,110 86,100 98,76 Z'/%3E%3Cpath fill='%232f3123' d='M214,198 C230,190 244,206 233,222 C222,238 199,226 214,198 Z'/%3E%3Cpath fill='%232f3123' d='M52,108 C66,100 78,114 68,128 C57,142 40,128 52,108 Z'/%3E%3Cpath fill='%232f3123' d='M158,244 C172,236 186,250 176,265 C165,280 145,268 158,244 Z'/%3E%3C/svg%3E");
+    background-size: 300px 300px;
+    background-repeat: repeat;
+  }
+
+  /* ミリタリー壁紙 — カモフラージュ写真テクスチャ。アプリ全体の背景に使用 */
+  .military-bg {
+    background-color: #20241a;
+    background-image: url("/bg-camo.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* 匍匐前進する軍人のローディングアニメーション */
+  .cs-crawl-body {
+    transform-box: view-box;
+    transform-origin: 55px 40px;
+    animation: cs-bob 0.8s ease-in-out infinite;
+  }
+  .cs-arm,
+  .cs-leg {
+    transform-box: view-box;
+  }
+  .cs-arm-front {
+    transform-origin: 78px 38px;
+    animation: cs-limb 0.8s ease-in-out infinite;
+  }
+  .cs-arm-back {
+    transform-origin: 78px 40px;
+    animation: cs-limb 0.8s ease-in-out infinite reverse;
+  }
+  .cs-leg-a {
+    transform-origin: 34px 44px;
+    animation: cs-limb 0.8s ease-in-out infinite reverse;
+  }
+  .cs-leg-b {
+    transform-origin: 34px 44px;
+    animation: cs-limb 0.8s ease-in-out infinite;
+  }
+  @keyframes cs-limb {
+    0%,
+    100% {
+      transform: rotate(-11deg);
+    }
+    50% {
+      transform: rotate(13deg);
+    }
+  }
+  @keyframes cs-bob {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(2px, -1.5px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cs-crawl-body,
+    .cs-arm,
+    .cs-leg {
+      animation: none;
+    }
   }
 
   * {

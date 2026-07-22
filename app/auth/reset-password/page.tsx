@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import CrawlingSoldier from '@/components/CrawlingSoldier';
 
 // パスワードリセット画面
 // Supabase Auth のパスワード更新フローに対応
@@ -14,18 +15,54 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmedPassword, setConfirmedPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session?.user.email) {
-        router.push('/login');
+    const prepare = async () => {
+      const url = new URL(window.location.href);
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+
+      // Supabase がリンク無効・期限切れ等をエラーとして返すケース
+      const errorDescription =
+        url.searchParams.get('error_description') || hashParams.get('error_description');
+      if (errorDescription) {
+        setMessage({
+          type: 'error',
+          text: `リンクが無効か期限切れです（${errorDescription}）。もう一度パスワード再設定をやり直してください。`,
+        });
+        return;
       }
+
+      // メールのリンクから来た場合：?code= を明示的にセッションへ引き換える
+      const code = url.searchParams.get('code');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setMessage({
+            type: 'error',
+            text: `リンクの確認に失敗しました（${error.message}）。同じブラウザでメールのリンクを開いているかご確認ください。`,
+          });
+          return;
+        }
+        setReady(true);
+        return;
+      }
+
+      // コードが無い場合：既にセッションがあるかを確認
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user.email) {
+        setReady(true);
+        return;
+      }
+
+      // どれにも該当しない場合はログイン画面へ
+      router.push('/login');
     };
-    checkSession();
+
+    prepare();
   }, [router, supabase]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -58,6 +95,15 @@ export default function ResetPassword() {
           <CardTitle className="text-center text-2xl font-bold">パスワードをリセット</CardTitle>
         </CardHeader>
         <CardContent>
+          {!ready ? (
+            message ? (
+              <div className="rounded-md p-3 text-sm bg-red-50 text-red-700 border border-red-200">
+                {message.text}
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-gray-600">確認中...</p>
+            )
+          ) : (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -101,9 +147,10 @@ export default function ResetPassword() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? '処理中...' : 'パスワードを更新する'}
+              {loading ? <CrawlingSoldier size={20} label="更新中..." /> : 'パスワードを更新する'}
             </Button>
           </form>
+          )}
 
           <div className="mt-4 text-center text-sm">
             <Link href="/login" className="text-primary-600 hover:underline">

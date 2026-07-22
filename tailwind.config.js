@@ -6,6 +6,24 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // ミリタリーステンシル。日本語は含まれないためゴシックにフォールバック
+        military: [
+          'var(--font-military)',
+          'Yu Gothic',
+          'Hiragino Kaku Gothic ProN',
+          'Meiryo',
+          'sans-serif',
+        ],
+        // 日本語ステンシル（軍用クレート風）
+        'jp-military': [
+          'var(--font-jp-military)',
+          'Yu Gothic',
+          'Hiragino Kaku Gothic ProN',
+          'Meiryo',
+          'sans-serif',
+        ],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -15,16 +33,22 @@ module.exports = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#f5f7ef',
+          100: '#e7ecd6',
+          200: '#d0daae',
+          300: '#b0c07d',
+          400: '#8a9a5b',
+          500: '#6b7a3a',
+          600: '#556b2f',
+          700: '#4b5320',
+          800: '#3a4019',
+          900: '#2f3123',
+        },
+        // 迷彩（ミリタリー）カラー — 営業マンの秘密基地テーマ
+        camo: {
+          light: '#8a9a5b', // カーキ
+          DEFAULT: '#4b5320', // オリーブドラブ
+          dark: '#3a4019', // ダークオリーブ
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import CrawlingSoldier from '@/components/CrawlingSoldier';
 
 // ログイン画面
 // Supabase Auth（メールアドレス + パスワード）を使ったログイン・新規登録
@@ -48,10 +49,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo.png"
+        alt="EIGYO BASE — 営業マンの秘密基地"
+        className="mb-6 w-72 max-w-full rounded-md shadow-md"
+      />
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">
+          <CardTitle className="text-center text-2xl font-bold font-military tracking-wide">
             {mode === 'signin' ? 'ログイン' : 'アカウント作成'}
           </CardTitle>
         </CardHeader>
@@ -59,7 +66,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                メールアドレス
+                ID（メールアドレス）
               </label>
               <Input
                 id="email"
@@ -98,7 +105,13 @@ export default function LoginPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? '処理中...' : mode === 'signin' ? 'ログイン' : 'アカウント作成'}
+              {loading ? (
+                <CrawlingSoldier size={20} label="前進中..." />
+              ) : mode === 'signin' ? (
+                'ログイン'
+              ) : (
+                'アカウント作成'
+              )}
             </Button>
           </form>
 

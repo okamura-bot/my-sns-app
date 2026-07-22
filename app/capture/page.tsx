@@ -1,4 +1,5 @@
 import CameraCapture from '@/components/CameraCapture';
+import AuthStatus from '@/components/AuthStatus';
 
 // 撮影画面
 // CameraCapture コンポーネントを呼び出す
@@ -7,7 +8,10 @@ export default function CapturePage() {
   return (
     <div className="max-w-lg mx-auto min-h-screen">
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
-        <h1 className="text-lg font-bold text-gray-900">撮影</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-gray-900">撮影</h1>
+          <AuthStatus />
+        </div>
       </header>
       <main className="px-4 py-6">
         <CameraCapture />
